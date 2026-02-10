@@ -1,0 +1,25 @@
+# HuggingFace Spaces Configuration
+# ================================
+# This file tells HuggingFace how to build your app.
+
+# SDK: either "streamlit", "gradio", "docker", or "static"
+sdk: gradio
+
+# Python version
+python_version: "3.10"
+
+# Requirements (optional - will be auto-detected from requirements.txt)
+# requirements:
+#   - gradio
+#   - torch
+#   - transformers
+
+# Hardware configuration (optional)
+# hf_space_id: <your-space-id>
+# disabled: false
+# title: Enhancement AI
+# emoji: ✨
+# color: "#FF6B6B"
+
+# Model files (optional - HuggingFace will auto-download models from Hub)
+# model_id: <your-model-id>

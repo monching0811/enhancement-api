@@ -22,21 +22,62 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from typing import Optional
 
 # Configuration
-MODEL_PATH = "./enhancement-ai-model/final_model"
+LOCAL_MODEL_PATH = "./enhancement-ai-model/final_model"
+FALLBACK_MODEL = "google-t5/t5-base"
 API_HOST = "0.0.0.0"
 API_PORT = 8000
 
-# Load model and tokenizer
-print("Loading model...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
+def is_model_valid(path):
+    """Check if model files are complete"""
+    if not os.path.exists(path):
+        return False
+    model_file = os.path.join(path, "model.safetensors")
+    if os.path.exists(model_file):
+        file_size = os.path.getsize(model_file)
+        return file_size > 100_000_000  # 100MB minimum
+    return False
+
+# Determine model to use
+print("\n" + "="*60)
+print("Enhancement AI API Server")
+print("="*60 + "\n")
+
+if is_model_valid(LOCAL_MODEL_PATH):
+    model_to_use = LOCAL_MODEL_PATH
+    print("✓ Using your trained model")
+else:
+    model_to_use = FALLBACK_MODEL
+    print("⚠ Local model incomplete - using fallback")
+    print("  Model: google-t5/t5-base\n")
+    print("📝 To use your trained model:")
+    print("   1. Export from Colab: model.save_pretrained('./model')")
+    print("   2. Push files to GitHub and restart\n")
+
+# Load tokenizer
+print("Loading tokenizer...")
+try:
+    tokenizer = AutoTokenizer.from_pretrained("google-t5/t5-base")
+    print("✓ Tokenizer loaded")
+except Exception as e:
+    print(f"✗ Error: {e}")
+    raise
+
+# Load model
+print(f"Loading model: {model_to_use}")
+try:
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_to_use)
+    print("✓ Model loaded")
+except Exception as e:
+    print(f"✗ Error: {e}")
+    raise
+
 model.eval()
 
 if torch.cuda.is_available():
     model = model.cuda()
-    print("Using GPU")
+    print("✓ GPU available")
 else:
-    print("Using CPU")
+    print("ℹ Using CPU")
 
 # Load config
 config_path = "./enhancement-ai-model/model_config.json"
@@ -49,9 +90,14 @@ else:
 MAX_SOURCE_LENGTH = config.get("max_source_length", 128)
 MAX_TARGET_LENGTH = config.get("max_target_length", 128)
 
-print(f"Model loaded from {MODEL_PATH}")
+print(f"Model loaded from: {model_to_use}")
 print(f"Max source length: {MAX_SOURCE_LENGTH}")
 print(f"Max target length: {MAX_TARGET_LENGTH}")
+print("\n" + "="*60)
+print("API Server Ready!")
+print("="*60)
+print(f"API: http://localhost:{API_PORT}")
+print(f"Docs: http://localhost:{API_PORT}/docs\n")
 
 # FastAPI app
 app = FastAPI(
@@ -64,7 +110,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
